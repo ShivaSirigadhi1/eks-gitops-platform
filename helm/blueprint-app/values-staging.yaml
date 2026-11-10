@@ -1,0 +1,28 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/your-org/blueprint-app
+  tag: "staging-latest"
+  pullPolicy: IfNotPresent
+
+ingress:
+  enabled: true
+
+env:
+  ENVIRONMENT: staging
+  LOG_LEVEL: info
+  ENABLE_SWAGGER: "false"
+  OTEL_TRACES_SAMPLER_ARG: "0.5"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10

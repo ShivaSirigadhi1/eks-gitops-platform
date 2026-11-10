@@ -1,0 +1,29 @@
+# Default owners for everything
+* @your-org/platform-team
+
+# CI/CD workflows
+/.github/ @your-org/platform-team
+
+# Application code
+/app/ @your-org/backend-team
+
+# Infrastructure
+/terraform/ @your-org/platform-team
+
+# Helm charts
+/helm/ @your-org/platform-team
+
+# GitOps configuration
+/gitops/ @your-org/platform-team
+
+# Observability configuration
+/observability/ @your-org/platform-team
+
+# Security configuration
+/security/ @your-org/security-team
+
+# Scripts
+/scripts/ @your-org/platform-team
+
+# Documentation
+/docs/ @your-org/platform-team

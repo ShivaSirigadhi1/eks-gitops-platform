@@ -1,0 +1,38 @@
+server:
+  http_listen_port: 3200
+  grpc_listen_port: 9095
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m
+  max_block_bytes: 1073741824
+
+compactor:
+  compaction:
+    block_retention: 1h
+    compacted_block_retention: 10m
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tempo/traces
+
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+      cluster: blueprint-cluster
+  storage:
+    path: /tempo/metrics
+    remote_write:
+      - url: http://prometheus.monitoring.svc:9090/api/v1/write
+        send_exemplars: true

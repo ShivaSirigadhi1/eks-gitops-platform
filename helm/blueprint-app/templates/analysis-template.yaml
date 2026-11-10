@@ -1,0 +1,35 @@
+{{- if .Values.canary.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-analysis
+  labels:
+    {{- include "blueprint-app.labels" . | nindent 4 }}
+spec:
+  args:
+  - name: service-name
+  - name: namespace
+  metrics:
+  - name: error-rate
+    interval: 30s
+    count: 5
+    successCondition: result[0] <= 0.01
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-k8s.monitoring.svc:9090
+        query: |
+          sum(rate(http_requests_total{status=~"5.."}[2m]))
+          /
+          sum(rate(http_requests_total[2m]))
+  - name: latency-p99
+    interval: 30s
+    count: 5
+    successCondition: result[0] <= 2.0
+    failureLimit: 2
+    provider:
+      prometheus:
+        address: http://prometheus-k8s.monitoring.svc:9090
+        query: |
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[2m])) by (le))
+{{- end }}

@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: blueprint-app-dev
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/your-org/eks-gitops-platform
+        revision: main
+        directories:
+          - path: gitops/apps/blueprint-app/values/values-dev.yaml
+  template:
+    metadata:
+      name: blueprint-app-dev
+    spec:
+      project: workloads
+      source:
+        repoURL: https://github.com/your-org/eks-gitops-platform
+        targetRevision: main
+        chart: helm/blueprint-app
+        helm:
+          valueFiles:
+            - $path
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: blueprint-dev
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

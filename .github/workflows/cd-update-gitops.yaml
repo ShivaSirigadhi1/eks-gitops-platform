@@ -1,0 +1,44 @@
+name: CD - Update GitOps Values
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: read
+  id-token: write
+
+jobs:
+  update-gitops:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: your-org/eks-gitops-platform
+          token: ${{ secrets.GITOPS_PAT }}
+          path: gitops
+
+      - name: Get commit SHA
+        id: commit
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          SHORT_SHA=$(echo "${SHA}" | cut -c1-7)
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Update dev values
+        run: |
+          sed -i "s|tag: \".*\"|tag: \"sha-${{ steps.commit.outputs.short_sha }}\"|" gitops/gitops/apps/blueprint-app/values/values-dev.yaml
+          cd gitops && git config user.name "ci-bot" && git config user.email "ci-bot@github.com"
+          git add gitops/apps/blueprint-app/values/values-dev.yaml
+          git commit -m "ci: update dev image tag to sha-${{ steps.commit.outputs.short_sha }}" || echo "No changes"
+          git push origin main
+
+      - name: Update staging values (manual approval via separate workflow)
+        run: |
+          echo "Staging update handled by CD Staging workflow"

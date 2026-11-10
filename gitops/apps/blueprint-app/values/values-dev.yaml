@@ -1,0 +1,30 @@
+# Dev environment values - updated by CI/CD
+replicaCount: 1
+image:
+  repository: ghcr.io/your-org/blueprint-app
+  tag: "dev-latest"
+  pullPolicy: Always
+ingress:
+  enabled: true
+  className: alb
+  hosts:
+    - host: dev.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+env:
+  ENVIRONMENT: dev
+  LOG_LEVEL: debug
+  ENABLE_SWAGGER: "true"
+  OTEL_TRACES_SAMPLER_ARG: "1.0"
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5

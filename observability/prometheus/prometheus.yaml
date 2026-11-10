@@ -1,0 +1,165 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: blueprint-cluster
+    environment: production
+    team: platform
+
+rule_files:
+  - /etc/prometheus/alerting-rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager.monitoring.svc:9093
+      timeout: 10s
+      api_version: v2
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090
+
+  - job_name: blueprint-app
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - blueprint-production
+            - blueprint-staging
+            - blueprint-dev
+        selectors:
+          - role: endpoints
+            label: app.kubernetes.io/name=blueprint-app
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        regex: metrics
+        action: keep
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - source_labels: [__meta_kubernetes_service_name]
+        target_label: service
+      - source_labels: [__meta_kubernetes_pod_label_environment]
+        target_label: environment
+
+  - job_name: kube-state-metrics
+    kubernetes_sd_configs:
+      - role: service
+        namespaces:
+          names:
+            - monitoring
+        selectors:
+          - role: service
+            label: app.kubernetes.io/name=kube-state-metrics
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        target_label: service
+
+  - job_name: node-exporter
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.+):(.+)'
+        target_label: __address__
+        replacement: '${1}:9100'
+      - source_labels: [__meta_kubernetes_node_label_kubernetes_io_hostname]
+        target_label: instance
+
+  - job_name: kubelet
+    kubernetes_sd_configs:
+      - role: node
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure_skip_verify: true
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.+):(.+)'
+        target_label: __address__
+        replacement: '${1}:10250'
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+
+  - job_name: kube-apiserver
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - default
+        selectors:
+          - role: endpoints
+            label: component=kube-apiserver
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: https
+
+  - job_name: cadvisor
+    kubernetes_sd_configs:
+      - role: node
+    metrics_path: /metrics/cadvisor
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure_skip_verify: true
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.+):(.+)'
+        target_label: __address__
+        replacement: '${1}:10250'
+
+  - job_name: nginx-ingress
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - ingress-nginx
+        selectors:
+          - role: endpoints
+            label: app.kubernetes.io/name=ingress-nginx
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        regex: metrics
+        action: keep
+
+  - job_name: otel-collector
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - monitoring
+        selectors:
+          - role: endpoints
+            label: app.kubernetes.io/name=otel-collector
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        regex: metrics
+        action: keep
+
+  - job_name: blackbox-http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://example.com/healthz
+          - https://staging.example.com/healthz
+          - https://dev.example.com/healthz
+        labels:
+          environment: production
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter.monitoring.svc:9115

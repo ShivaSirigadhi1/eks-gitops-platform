@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: workloads
+  namespace: argocd
+spec:
+  description: "Workload project for application teams - namespace scoped"
+  sourceRepos:
+    - "https://github.com/your-org/eks-gitops-platform"
+  destinations:
+    - namespace: "blueprint-dev"
+      server: "https://kubernetes.default.svc"
+    - namespace: "blueprint-staging"
+      server: "https://kubernetes.default.svc"
+    - namespace: "blueprint-production"
+      server: "https://kubernetes.default.svc"
+    - namespace: "monitoring"
+      server: "https://kubernetes.default.svc"
+  clusterResourceWhitelist:
+    - group: ""
+      kind: "Namespace"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  roles:
+    - name: developer
+      description: "Application developer with sync access to workloads"
+      policies:
+        - p, proj:workloads:developer, applications, get, workloads/*, allow
+        - p, proj:workloads:developer, applications, sync, workloads/*, allow
+        - p, proj:workloads:developer, applications, override, workloads/*, allow
+      groups:
+        - app-developers

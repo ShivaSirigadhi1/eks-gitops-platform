@@ -1,0 +1,13 @@
+title = "EKS GitOps Platform Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for known safe strings"
+paths = [
+    ".gitignore",
+    "LICENSE",
+    "*.md",
+    "docs/**",
+]

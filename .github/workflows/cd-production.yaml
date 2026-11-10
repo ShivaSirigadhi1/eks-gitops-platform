@@ -1,0 +1,109 @@
+name: CD - Production Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g., sha-abc1234)"
+        required: true
+        type: string
+      canary_weight:
+        description: "Canary traffic weight percentage (e.g., 10, 25, 50)"
+        required: false
+        default: "10"
+        type: string
+
+env:
+  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  IMAGE_NAME: blueprint-app
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  deploy-approval:
+    runs-on: ubuntu-latest
+    environment:
+      name: production-approval
+      url: https://github.com/${{ github.repository }}/deployments
+    steps:
+      - name: Deployment approval
+        run: |
+          echo "Production deployment approved by ${{ github.actor }}"
+          echo "Image tag: ${{ inputs.image_tag }}"
+          echo "Canary weight: ${{ inputs.canary_weight }}%"
+
+  canary-deploy:
+    needs: deploy-approval
+    runs-on: ubuntu-latest
+    outputs:
+      canary_healthy: ${{ steps.canary-check.outputs.healthy }}
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: your-org/eks-gitops-platform
+          token: ${{ secrets.GITOPS_PAT }}
+          path: gitops
+
+      - name: Update production values
+        run: |
+          sed -i "s|tag: \".*\"|tag: \"${{ inputs.image_tag }}\"|" gitops/gitops/apps/blueprint-app/values/values-production.yaml
+          sed -i "s|weight: [0-9]*|weight: ${{ inputs.canary_weight }}|" gitops/gitops/apps/blueprint-app/values/values-production.yaml
+          cd gitops && git config user.name "ci-bot" && git config user.email "ci-bot@github.com"
+          git add gitops/apps/blueprint-app/values/values-production.yaml
+          git commit -m "deploy: promote ${{ inputs.image_tag }} to production (canary ${{ inputs.canary_weight }}%)"
+          git push origin main
+
+      - name: Wait for Argo CD sync
+        run: |
+          echo "Waiting for Argo CD to detect and sync..."
+          sleep 30
+
+      - name: Monitor canary health
+        id: canary-check
+        run: |
+          HEALTHY=true
+          for i in $(seq 1 30); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://example.com/healthz" || echo "000")
+            if [[ "$STATUS" != "200" ]]; then
+              echo "Warning: Health check returned $STATUS (attempt ${i}/30)"
+            fi
+            sleep 10
+          done
+          echo "healthy=${HEALTHY}" >> $GITHUB_OUTPUT
+
+      - name: Rollback on failure
+        if: steps.canary-check.outputs.healthy != 'true'
+        run: |
+          echo "Canary health check failed — rolling back..."
+          cd gitops
+          git revert HEAD --no-edit
+          git push origin main
+          echo "Rollback complete"
+          exit 1
+
+  full-deploy:
+    needs: canary-deploy
+    if: needs.canary-deploy.outputs.canary_healthy == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: your-org/eks-gitops-platform
+          token: ${{ secrets.GITOPS_PAT }}
+          path: gitops
+
+      - name: Promote canary to 100%
+        run: |
+          sed -i "s|weight: ${{ inputs.canary_weight }}|weight: 100|" gitops/gitops/apps/blueprint-app/values/values-production.yaml
+          cd gitops && git config user.name "ci-bot" && git config user.email "ci-bot@github.com"
+          git add gitops/apps/blueprint-app/values/values-production.yaml
+          git commit -m "deploy: promote ${{ inputs.image_tag }} to 100% production traffic"
+          git push origin main
+
+      - name: Notify success
+        run: |
+          echo "Production deployment successful!"

@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: "Platform team project with full cluster access"
+  sourceRepos:
+    - "*"
+  destinations:
+    - namespace: "*"
+      server: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  roles:
+    - name: admin
+      description: "Platform admin with full access"
+      policies:
+        - p, proj:platform:admin, applications, *, */*, allow
+        - p, proj:platform:admin, repositories, *, *, allow
+        - p, proj:platform:admin, clusters, *, *, allow
+        - p, proj:platform:admin, projects, *, *, allow
+      groups:
+        - platform-admins

@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: trivy-system
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: trivy-operator
+  namespace: trivy-system
+spec:
+  repo: https://aquasecurity.github.io/helm-charts
+  chart: trivy-operator
+  targetNamespace: trivy-system
+  valuesContent: |
+    image:
+      tag: 0.21.0
+    trivy:
+      mode: ClientServer
+      server:
+        url: http://trivy-server.trivy-system:4954
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    operator:
+      scanJobsConcurrentLimit: 3
+      scanJobTimeout: 5m
+      vulnerabilityScannerScanOnlyCurrentRevisions: true
+      configAuditScannerEnabled: true
+      scannerReportTTL: 24h
+      targetNamespaces:
+        - blueprint-dev
+        - blueprint-staging
+        - blueprint-production
+    metrics:
+      exposure: enabled
+      port: 8443
+    serviceMonitor:
+      enabled: true
+      interval: 30s

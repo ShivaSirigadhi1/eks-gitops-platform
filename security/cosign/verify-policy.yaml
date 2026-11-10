@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cosign-verify-policy
+  namespace: security
+data:
+  policy.yaml: |
+    verification:
+      signatures:
+        - key: /tmp/cosign.pub
+          subject: ""
+          prefix: ""
+      annotations:
+        - key: "dev.cosignproject.io/signature"

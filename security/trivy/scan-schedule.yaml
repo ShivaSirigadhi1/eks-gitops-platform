@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trivy-scheduled-scan
+  namespace: trivy-system
+spec:
+  schedule: "0 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: trivy-scanner
+          containers:
+            - name: trivy
+              image: aquasec/trivy:latest
+              args:
+                - image
+                - --scanners
+                - vuln,secret,config
+                - --format
+                - json
+                - --output
+                - /tmp/scan-report.json
+                - ghcr.io/your-org/blueprint-app:latest
+              volumeMounts:
+                - name: output
+                  mountPath: /tmp
+          restartPolicy: OnFailure
+          volumes:
+            - name: output
+              emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: trivy-scanner
+  namespace: trivy-system

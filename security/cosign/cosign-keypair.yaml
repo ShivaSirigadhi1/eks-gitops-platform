@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cosign-key
+  namespace: security
+type: Opaque
+stringData:
+  password: "changeme"
+  private-key: |
+    -----BEGIN ENCRYPTED PRIVATE KEY-----
+    REPLACE_WITH_ACTUAL_KEY
+    -----END ENCRYPTED PRIVATE KEY-----
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cosign-pubkey
+  namespace: security
+type: Opaque
+stringData:
+  cosign.pub: |
+    -----BEGIN PUBLIC KEY-----
+    REPLACE_WITH_ACTUAL_PUBKEY
+    -----END PUBLIC KEY-----
