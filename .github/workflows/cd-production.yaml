@@ -41,7 +41,7 @@ jobs:
       canary_healthy: ${{ steps.canary-check.outputs.healthy }}
     steps:
       - name: Checkout GitOps repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: your-org/eks-gitops-platform
           token: ${{ secrets.GITOPS_PAT }}
@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout GitOps repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: your-org/eks-gitops-platform
           token: ${{ secrets.GITOPS_PAT }}
