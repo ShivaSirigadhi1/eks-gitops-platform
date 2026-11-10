@@ -174,7 +174,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate SBOM with Syft
-        uses: anchore/sbom-action@v0.17.0
+        uses: anchore/sbom-action@v0.24.3
         with:
           image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
           format: spdx-json
