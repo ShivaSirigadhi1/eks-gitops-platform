@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM python:3.12-slim AS builder
+FROM python:3.15-slim AS builder
 
 WORKDIR /build
 
@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir --user ruff mypy \
     && python -m mypy src/ --ignore-missing-imports
 
 # Stage 2: Runtime
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 RUN groupadd --gid 1000 appuser \
     && useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser \
